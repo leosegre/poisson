@@ -287,7 +287,8 @@ class NeRFRenderer(nn.Module):
 
             #plot_pointcloud(xyzs.reshape(-1, 3).detach().cpu().numpy())
             
-            sigmas, rgbs = self(xyzs, dirs)
+            sigmas, rgbs, normals = self(xyzs, dirs)
+            print(normals)
             # density_outputs = self.density(xyzs) # [M,], use a dict since it may include extra things, like geo_feat for rgb.
             # sigmas = density_outputs['sigma']
             # rgbs = self.color(xyzs, dirs, **density_outputs)

@@ -96,6 +96,8 @@ class NeRFNetwork(NeRFRenderer):
         # x: [N, 3], in [-bound, bound]
         # d: [N, 3], nomalized in [-1, 1]
 
+        x.requires_grad = True
+
         # sigma
         x = self.encoder(x, bound=self.bound)
 
@@ -121,7 +123,40 @@ class NeRFNetwork(NeRFRenderer):
         # sigmoid activation for rgb
         color = torch.sigmoid(h)
 
-        return sigma, color
+        normal = torch.autograd.grad(sigma, x, create_graph=True, grad_outputs=torch.ones_like(sigma))[0]
+        normal = torch.nn.functional.normalize(normal, dim=-1)
+
+        cos = torch.nn.CosineSimilarity(dim=1, eps=1e-08)
+        normal = normal * torch.sign(cos(d_input.detach(), normal).unsqueeze(-1))
+
+        return sigma, color, normal
+
+    def normal(self, x, d):
+        # x: [N, 3], in [-bound, bound]
+
+        x.requires_grad = True
+
+        x_bounded = (x + self.bound) / (2 * self.bound) # to [0, 1]
+
+        h = self.encoder(x_bounded)
+
+        for l in range(self.num_layers):
+            h = self.sigma_net[l](h)
+            if l != self.num_layers - 1:
+                h = torch.sin(h)
+
+        #sigma = F.relu(h[..., 0])
+        sigma = trunc_exp(h[..., 0])
+
+        # print(sigma.shape)
+        normal = torch.autograd.grad(sigma, x, create_graph=True, grad_outputs=torch.ones_like(sigma))[0]
+        normal = torch.nn.functional.normalize(normal, dim=-1)
+
+        cos = torch.nn.CosineSimilarity(dim=1, eps=1e-08)
+        normal = normal * torch.sign(cos(d.detach(), normal).unsqueeze(-1))
+
+
+        return normal
 
     def density(self, x):
         # x: [N, 3], in [-bound, bound]
