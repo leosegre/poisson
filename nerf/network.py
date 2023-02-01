@@ -97,6 +97,7 @@ class NeRFNetwork(NeRFRenderer):
         # d: [N, 3], nomalized in [-1, 1]
 
         x.requires_grad = True
+        d_input = d.detach()
 
         # sigma
         x = self.encoder(x, bound=self.bound)
@@ -127,7 +128,7 @@ class NeRFNetwork(NeRFRenderer):
         normal = torch.nn.functional.normalize(normal, dim=-1)
 
         cos = torch.nn.CosineSimilarity(dim=1, eps=1e-08)
-        normal = normal * torch.sign(cos(d_input.detach(), normal).unsqueeze(-1))
+        normal = normal * torch.sign(cos(d_input, normal).unsqueeze(-1))
 
         return sigma, color, normal
 
