@@ -100,9 +100,9 @@ class NeRFNetwork(NeRFRenderer):
         d_input = d.detach()
 
         # sigma
-        x = self.encoder(x, bound=self.bound)
+        x_bounded = self.encoder(x, bound=self.bound)
 
-        h = x
+        h = x_bounded
         for l in range(self.num_layers):
             h = self.sigma_net[l](h)
             if l != self.num_layers - 1:
