@@ -309,7 +309,7 @@ class NeRFRenderer(nn.Module):
             dnormaly_dy = dnormaly_dy[mask].reshape((-1, 1))
             dnormalz_dz = dnormalz_dz[mask].reshape((-1, 1))
 
-            print(mask.all())
+            print(mask.any())
             if dnormalx_dx.shape[0] == 0:
                 poisson_loss_calc = torch.zeros(1, device=device)
             else:
