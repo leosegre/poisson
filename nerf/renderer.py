@@ -310,8 +310,7 @@ class NeRFRenderer(nn.Module):
             if dnormalx_dx.shape[0] == 0:
                 poisson_loss_calc = torch.zeros(1, device=device)
             else:
-                poisson_loss_calc = (dnormalx_dx + dnormaly_dy + dnormalz_dz)\
-                    .mean(-1)
+                poisson_loss_calc = (dnormalx_dx + dnormaly_dy + dnormalz_dz).mean()
             # print(sigmas.shape)
 
             # u_x = torch.autograd.functional.jacobian(self, (xyzs, dirs), create_graph=True)
