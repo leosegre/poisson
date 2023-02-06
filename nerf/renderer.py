@@ -302,7 +302,7 @@ class NeRFRenderer(nn.Module):
             dnormaly_dy = torch.autograd.grad(normal[..., 1], xyzs, create_graph=True, grad_outputs=torch.ones_like(normal[..., 1]))[0][..., 1]
             dnormalz_dz = torch.autograd.grad(normal[..., 2], xyzs, create_graph=True, grad_outputs=torch.ones_like(normal[..., 2]))[0][..., 2]
 
-            if normals.shape[0] == 0:
+            if normal.shape[0] == 0:
                 poisson_loss_calc = torch.zeros(1, device=device)
             else:
                 poisson_loss_calc = (dnormalx_dx + dnormaly_dy + dnormalz_dz).mean(-1)
