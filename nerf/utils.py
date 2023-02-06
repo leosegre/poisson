@@ -839,8 +839,8 @@ class Trainer(object):
             loss_val = loss.item()
             total_loss += loss_val
 
-            poisson_loss_val = loss.item()
-            total_poisson_loss += loss_val
+            poisson_loss_val = poisson_loss.item()
+            total_poisson_loss += poisson_loss_val
 
             if self.local_rank == 0:
                 if self.report_metric_at_train:
