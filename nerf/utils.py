@@ -827,7 +827,7 @@ class Trainer(object):
             with torch.cuda.amp.autocast(enabled=self.fp16):
                 preds, truths, loss, poisson_loss = self.train_step(data)
 
-            combined_loss = loss + self.opt.lambda_n * poisson_loss
+            combined_loss = loss + self.opt.lambda_p * poisson_loss
 
             self.scaler.scale(combined_loss).backward()
             self.scaler.step(self.optimizer)
