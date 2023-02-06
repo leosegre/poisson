@@ -521,8 +521,10 @@ class Trainer(object):
         # pred_weights_sum = outputs['weights_sum'] + 1e-8
         # loss_ws = - 1e-1 * pred_weights_sum * torch.log(pred_weights_sum) # entropy to encourage weights_sum to be 0 or 1.
         # loss = loss + loss_ws.mean()
+        poisson_loss = outputs['poisson_loss']
 
-        return pred_rgb, gt_rgb, loss
+
+        return pred_rgb, gt_rgb, loss, poisson_loss
 
     def eval_step(self, data):
 
@@ -793,6 +795,7 @@ class Trainer(object):
         self.log(f"==> Start Training Epoch {self.epoch}, lr={self.optimizer.param_groups[0]['lr']:.6f} ...")
 
         total_loss = 0
+        total_poisson_loss = 0
         if self.local_rank == 0 and self.report_metric_at_train:
             for metric in self.metrics:
                 metric.clear()
@@ -822,9 +825,11 @@ class Trainer(object):
             self.optimizer.zero_grad()
 
             with torch.cuda.amp.autocast(enabled=self.fp16):
-                preds, truths, loss = self.train_step(data)
-         
-            self.scaler.scale(loss).backward()
+                preds, truths, loss, poisson_loss = self.train_step(data)
+
+            combined_loss = loss + poisson_loss
+
+            self.scaler.scale(combined_loss).backward()
             self.scaler.step(self.optimizer)
             self.scaler.update()
 
@@ -834,6 +839,9 @@ class Trainer(object):
             loss_val = loss.item()
             total_loss += loss_val
 
+            poisson_loss_val = loss.item()
+            total_poisson_loss += loss_val
+
             if self.local_rank == 0:
                 if self.report_metric_at_train:
                     for metric in self.metrics:
@@ -841,10 +849,13 @@ class Trainer(object):
                         
                 if self.use_tensorboardX:
                     self.writer.add_scalar("train/loss", loss_val, self.global_step)
+                    self.writer.add_scalar("train/poisson_loss", poisson_loss_val, self.global_step)
                     self.writer.add_scalar("train/lr", self.optimizer.param_groups[0]['lr'], self.global_step)
 
                 if self.scheduler_update_every_step:
-                    pbar.set_description(f"loss={loss_val:.4f} ({total_loss/self.local_step:.4f}), lr={self.optimizer.param_groups[0]['lr']:.6f}")
+                    pbar.set_description(f"loss={loss_val:.4f} ({total_loss/self.local_step:.4f}), "
+                                         f"poisson_loss={poisson_loss_val:.4f} ({total_poisson_loss/self.local_step:.4f}), "
+                                         f"lr={self.optimizer.param_groups[0]['lr']:.6f}")
                 else:
                     pbar.set_description(f"loss={loss_val:.4f} ({total_loss/self.local_step:.4f})")
                 pbar.update(loader.batch_size)

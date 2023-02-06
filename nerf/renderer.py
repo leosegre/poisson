@@ -286,12 +286,28 @@ class NeRFRenderer(nn.Module):
             xyzs, dirs, deltas, rays = raymarching.march_rays_train(rays_o, rays_d, self.bound, self.density_bitfield, self.cascade, self.grid_size, nears, fars, counter, self.mean_count, perturb, 128, force_all_rays, dt_gamma, max_steps)
 
             #plot_pointcloud(xyzs.reshape(-1, 3).detach().cpu().numpy())
-            
+            xyzs.requires_grad = True
             sigmas, rgbs = self(xyzs, dirs)
 
-            u_x = torch.autograd.functional.jacobian(self, (xyzs, dirs), create_graph=True)
-            u_x = torch.squeeze(u_x)
-            print(u_x.shape)
+            dr_dx = torch.autograd.grad(rgbs[..., 0], xyzs, create_graph=True, grad_outputs=torch.ones_like(rgbs[..., 0]))[0]
+            dg_dx = torch.autograd.grad(rgbs[..., 1], xyzs, create_graph=True, grad_outputs=torch.ones_like(rgbs[..., 1]))[0]
+            db_dx = torch.autograd.grad(rgbs[..., 2], xyzs, create_graph=True, grad_outputs=torch.ones_like(rgbs[..., 2]))[0]
+
+            normal = torch.autograd.grad(sigmas, xyzs, create_graph=True, grad_outputs=torch.ones_like(sigmas))[0]
+            normal = torch.nn.functional.normalize(normal, dim=-1)
+            cos = torch.nn.CosineSimilarity(dim=1, eps=1e-08)
+            normal = normal * torch.sign(cos(dirs, normal).unsqueeze(-1))
+
+            dnormalx_dx = torch.autograd.grad(normal[..., 0], xyzs, create_graph=True, grad_outputs=torch.ones_like(normal[..., 0]))[0][..., 0]
+            dnormaly_dy = torch.autograd.grad(normal[..., 1], xyzs, create_graph=True, grad_outputs=torch.ones_like(normal[..., 1]))[0][..., 1]
+            dnormalz_dz = torch.autograd.grad(normal[..., 2], xyzs, create_graph=True, grad_outputs=torch.ones_like(normal[..., 2]))[0][..., 2]
+
+            poisson_loss_calc = dnormalx_dx + dnormaly_dy + dnormalz_dz
+            # print(sigmas.shape)
+
+            # u_x = torch.autograd.functional.jacobian(self, (xyzs, dirs), create_graph=True)
+            # u_x = torch.squeeze(u_x)
+            # print(u_x[0].shape, u_x[1],shape)
 
             # print(normals)
             # density_outputs = self.density(xyzs) # [M,], use a dict since it may include extra things, like geo_feat for rgb.
@@ -388,6 +404,8 @@ class NeRFRenderer(nn.Module):
         
         results['depth'] = depth
         results['image'] = image
+        if self.training:
+            results['poisson_loss'] = poisson_loss_calc
 
         return results
 
