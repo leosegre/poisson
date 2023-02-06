@@ -61,6 +61,7 @@ if __name__ == '__main__':
     parser.add_argument('--error_map', action='store_true', help="use error map to sample rays")
     parser.add_argument('--clip_text', type=str, default='', help="text input for CLIP guidance")
     parser.add_argument('--rand_pose', type=int, default=-1, help="<0 uses no rand pose, =0 only uses rand pose, >0 sample one rand pose every $ known poses")
+    parser.add_argument('--lambda_p', type=float, default=0, help="Lambda to select the ratio between poisson loss and nerf loss")
 
     opt = parser.parse_args()
 
