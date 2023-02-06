@@ -302,7 +302,7 @@ class NeRFRenderer(nn.Module):
             dnormaly_dy = torch.autograd.grad(normal[..., 1], xyzs, create_graph=True, grad_outputs=torch.ones_like(normal[..., 1]))[0][..., 1]
             dnormalz_dz = torch.autograd.grad(normal[..., 2], xyzs, create_graph=True, grad_outputs=torch.ones_like(normal[..., 2]))[0][..., 2]
 
-            poisson_loss_calc = dnormalx_dx + dnormaly_dy + dnormalz_dz
+            poisson_loss_calc = (dnormalx_dx + dnormaly_dy + dnormalz_dz).mean(-1)
             # print(sigmas.shape)
 
             # u_x = torch.autograd.functional.jacobian(self, (xyzs, dirs), create_graph=True)
