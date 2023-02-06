@@ -6,6 +6,9 @@ from encoding import get_encoder
 from activation import trunc_exp
 from .renderer import NeRFRenderer
 
+import numpy as np
+import tinycudann as tcnn
+
 
 class NeRFNetwork(NeRFRenderer):
     def __init__(self,
@@ -28,7 +31,22 @@ class NeRFNetwork(NeRFRenderer):
         self.num_layers = num_layers
         self.hidden_dim = hidden_dim
         self.geo_feat_dim = geo_feat_dim
-        self.encoder, self.in_dim = get_encoder(encoding, desired_resolution=2048 * bound)
+        # self.encoder, self.in_dim = get_encoder(encoding, desired_resolution=2048 * bound)
+
+        per_level_scale = np.exp2(np.log2(2048 * bound / 16) / (16 - 1))
+        self.in_dim =32
+
+        self.encoder = tcnn.Encoding(
+            n_input_dims=3,
+            encoding_config={
+                "otype": "HashGrid",
+                "n_levels": 16,
+                "n_features_per_level": 2,
+                "log2_hashmap_size": 19,
+                "base_resolution": 16,
+                "per_level_scale": per_level_scale,
+            },
+        )
 
         sigma_net = []
         for l in range(num_layers):
@@ -96,17 +114,22 @@ class NeRFNetwork(NeRFRenderer):
         # x: [N, 3], in [-bound, bound]
         # d: [N, 3], nomalized in [-1, 1]
 
-        x.requires_grad = True
-        d_input = d.detach()
+        # x.requires_grad = True
+        # d_input = d
 
         # sigma
-        x_bounded = self.encoder(x, bound=self.bound)
+        # x_bounded = self.encoder(x, bound=self.bound)
+        x_bounded = (x + self.bound) / (2 * self.bound) # to [0, 1]
 
-        h = x_bounded
+        h = self.encoder(x_bounded)
+
+
+        # h = x_bounded
         for l in range(self.num_layers):
             h = self.sigma_net[l](h)
             if l != self.num_layers - 1:
-                h = F.relu(h, inplace=True)
+                h =torch.sin(h)
+                # h = F.relu(h, inplace=True)
 
         #sigma = F.relu(h[..., 0])
         sigma = trunc_exp(h[..., 0])
@@ -119,18 +142,19 @@ class NeRFNetwork(NeRFRenderer):
         for l in range(self.num_layers_color):
             h = self.color_net[l](h)
             if l != self.num_layers_color - 1:
-                h = F.relu(h, inplace=True)
+                h =torch.sin(h)
+                # h = F.relu(h, inplace=True)
         
         # sigmoid activation for rgb
         color = torch.sigmoid(h)
 
-        normal = torch.autograd.grad(sigma, x, create_graph=True, grad_outputs=torch.ones_like(sigma))[0]
-        normal = torch.nn.functional.normalize(normal, dim=-1)
+        # normal = torch.autograd.grad(sigma, x, create_graph=True, grad_outputs=torch.ones_like(sigma))[0]
+        # normal = torch.nn.functional.normalize(normal, dim=-1)
+        #
+        # cos = torch.nn.CosineSimilarity(dim=1, eps=1e-08)
+        # normal = normal * torch.sign(cos(d_input, normal).unsqueeze(-1))
 
-        cos = torch.nn.CosineSimilarity(dim=1, eps=1e-08)
-        normal = normal * torch.sign(cos(d_input, normal).unsqueeze(-1))
-
-        return sigma, color, normal
+        return sigma, color
 
     def normal(self, x, d):
         # x: [N, 3], in [-bound, bound]
@@ -162,12 +186,17 @@ class NeRFNetwork(NeRFRenderer):
     def density(self, x):
         # x: [N, 3], in [-bound, bound]
 
-        x = self.encoder(x, bound=self.bound)
-        h = x
+        # x = self.encoder(x, bound=self.bound)
+        # h = x
+        x_bounded = (x + self.bound) / (2 * self.bound) # to [0, 1]
+
+        h = self.encoder(x_bounded)
+
         for l in range(self.num_layers):
             h = self.sigma_net[l](h)
             if l != self.num_layers - 1:
-                h = F.relu(h, inplace=True)
+                h =torch.sin(h)
+                # h = F.relu(h, inplace=True)
 
         #sigma = F.relu(h[..., 0])
         sigma = trunc_exp(h[..., 0])
@@ -214,7 +243,8 @@ class NeRFNetwork(NeRFRenderer):
         for l in range(self.num_layers_color):
             h = self.color_net[l](h)
             if l != self.num_layers_color - 1:
-                h = F.relu(h, inplace=True)
+                h =torch.sin(h)
+                # h = F.relu(h, inplace=True)
         
         # sigmoid activation for rgb
         h = torch.sigmoid(h)

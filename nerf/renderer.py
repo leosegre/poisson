@@ -287,8 +287,13 @@ class NeRFRenderer(nn.Module):
 
             #plot_pointcloud(xyzs.reshape(-1, 3).detach().cpu().numpy())
             
-            sigmas, rgbs, normals = self(xyzs, dirs)
-            print(normals)
+            sigmas, rgbs = self(xyzs, dirs)
+
+            u_x = torch.autograd.functional.jacobian(self, (xyzs, dirs), create_graph=True)
+            u_x = torch.squeeze(u_x)
+            print(u_x.shape)
+
+            # print(normals)
             # density_outputs = self.density(xyzs) # [M,], use a dict since it may include extra things, like geo_feat for rgb.
             # sigmas = density_outputs['sigma']
             # rgbs = self.color(xyzs, dirs, **density_outputs)
@@ -354,6 +359,15 @@ class NeRFRenderer(nn.Module):
                 xyzs, dirs, deltas = raymarching.march_rays(n_alive, n_step, rays_alive, rays_t, rays_o, rays_d, self.bound, self.density_bitfield, self.cascade, self.grid_size, nears, fars, 128, perturb if step == 0 else False, dt_gamma, max_steps)
 
                 sigmas, rgbs = self(xyzs, dirs)
+
+                # print(xyzs.shape)
+                # mask = xyzs[..., 1] > 0
+                # print(mask.shape)
+                # print(sigmas.shape)
+
+                # sigmas[mask] = 0
+
+
                 # density_outputs = self.density(xyzs) # [M,], use a dict since it may include extra things, like geo_feat for rgb.
                 # sigmas = density_outputs['sigma']
                 # rgbs = self.color(xyzs, dirs, **density_outputs)
