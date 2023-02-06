@@ -288,6 +288,8 @@ class NeRFRenderer(nn.Module):
             #plot_pointcloud(xyzs.reshape(-1, 3).detach().cpu().numpy())
             xyzs.requires_grad = True
             sigmas, rgbs = self(xyzs, dirs)
+            sigmas = self.density_scale * sigmas
+
 
             dr_dx = torch.autograd.grad(rgbs[..., 0], xyzs, create_graph=True, grad_outputs=torch.ones_like(rgbs[..., 0]))[0]
             dg_dx = torch.autograd.grad(rgbs[..., 1], xyzs, create_graph=True, grad_outputs=torch.ones_like(rgbs[..., 1]))[0]
@@ -321,7 +323,6 @@ class NeRFRenderer(nn.Module):
             # density_outputs = self.density(xyzs) # [M,], use a dict since it may include extra things, like geo_feat for rgb.
             # sigmas = density_outputs['sigma']
             # rgbs = self.color(xyzs, dirs, **density_outputs)
-            sigmas = self.density_scale * sigmas
 
             #print(f'valid RGB query ratio: {mask.sum().item() / mask.shape[0]} (total = {mask.sum().item()})')
 
