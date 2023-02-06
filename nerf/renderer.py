@@ -296,9 +296,9 @@ class NeRFRenderer(nn.Module):
             db_dx = torch.autograd.grad(rgbs[..., 2], xyzs, create_graph=True, grad_outputs=torch.ones_like(rgbs[..., 2]))[0]
 
             normal = torch.autograd.grad(sigmas, xyzs, create_graph=True, grad_outputs=torch.ones_like(sigmas))[0]
-            normal = torch.nn.functional.normalize(normal, dim=-1)
-            cos = torch.nn.CosineSimilarity(dim=1, eps=1e-08)
-            normal = normal * torch.sign(cos(dirs, normal).unsqueeze(-1))
+            # normal = torch.nn.functional.normalize(normal, dim=-1)
+            # cos = torch.nn.CosineSimilarity(dim=1, eps=1e-08)
+            # normal = normal * torch.sign(cos(dirs, normal).unsqueeze(-1))
 
             dnormalx_dx = torch.autograd.grad(normal[..., 0], xyzs, create_graph=True, grad_outputs=torch.ones_like(normal[..., 0]))[0][..., 0]
             dnormaly_dy = torch.autograd.grad(normal[..., 1], xyzs, create_graph=True, grad_outputs=torch.ones_like(normal[..., 1]))[0][..., 1]
