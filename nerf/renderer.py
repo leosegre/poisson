@@ -309,11 +309,11 @@ class NeRFRenderer(nn.Module):
             dnormaly_dy = dnormaly_dy[mask].reshape((-1, 1))
             dnormalz_dz = dnormalz_dz[mask].reshape((-1, 1))
 
+            print(mask.all())
             if dnormalx_dx.shape[0] == 0:
                 poisson_loss_calc = torch.zeros(1, device=device)
             else:
-                poisson_loss_calc = torch.zeros(1, device=device)
-                # poisson_loss_calc = (dnormalx_dx**2 + dnormaly_dy**2 + dnormalz_dz**2).mean()
+                poisson_loss_calc = (dnormalx_dx**2 + dnormaly_dy**2 + dnormalz_dz**2).mean()
             # print(sigmas.shape)
 
             # u_x = torch.autograd.functional.jacobian(self, (xyzs, dirs), create_graph=True)
